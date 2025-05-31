@@ -4,7 +4,7 @@ YOLO检测器核心模块
 提供基于YOLOv8的目标检测功能，支持图片和视频检测。
 
 主要功能：
-- 模型加载：支持PyTorch (.pt) 和 ONNX (.onnx) 格式
+- 模型加载：支持PyTorch (.pt) 格式
 - 参数配置：置信度、IoU阈值等参数设置
 - 图片检测：单张图片的目标检测
 - 视频检测：视频文件的逐帧检测
@@ -21,7 +21,6 @@ from pathlib import Path
 from typing import Optional, Union, List, Tuple, Generator
 from ultralytics import YOLO
 import torch
-import onnxruntime as ort
 from .utils import get_device, validate_model_file
 
 
@@ -36,7 +35,7 @@ class YOLODetector:
         self.iou_threshold = 0.45
         self.max_det = 1000
         self.classes = None  # 指定检测的类别
-        self.model_type = None  # 'pt' 或 'onnx'
+        self.model_type = None  # 'pt'
         self.task_type = None  # 任务类型：'detect', 'segment', 'pose', 'classify', 'obb'
 
         # 显示选项
@@ -50,6 +49,8 @@ class YOLODetector:
         # 颜色管理
         self.class_colors = {}  # 类别颜色缓存
         self._init_class_colors()
+
+
 
     def _init_class_colors(self):
         """初始化类别颜色"""
@@ -126,17 +127,13 @@ class YOLODetector:
                 if hasattr(self.model.model, 'to'):
                     self.model.model.to(self.device)
 
+
+
                 # 识别任务类型
                 self._detect_task_type()
 
-            elif self.model_type == 'onnx':
-                # 加载ONNX模型
-                providers = ['CUDAExecutionProvider', 'CPUExecutionProvider'] if self.device == 'cuda' else ['CPUExecutionProvider']
-                self.model = ort.InferenceSession(model_path, providers=providers)
-                # ONNX模型任务类型需要从文件名或其他方式推断
-                self.task_type = 'detect'  # 默认为检测任务
             else:
-                raise ValueError(f"不支持的模型格式: {file_ext}")
+                raise ValueError(f"不支持的模型格式: {file_ext}，仅支持 .pt 格式")
 
             return True
 
@@ -174,10 +171,6 @@ class YOLODetector:
                 self.task_type = 'detect'
                 print(f"无法确定任务类型，默认为: {self.task_type}")
 
-            elif self.model_type == 'onnx':
-                # ONNX模型通过输出节点分析
-                self.task_type = self._analyze_onnx_outputs()
-                print(f"ONNX模型检测到任务类型: {self.task_type}")
             else:
                 self.task_type = 'detect'
 
@@ -345,45 +338,7 @@ class YOLODetector:
             print(f"推理检测失败: {e}")
             return None
 
-    def _analyze_onnx_outputs(self):
-        """分析ONNX模型输出确定任务类型"""
-        try:
-            if not hasattr(self.model, 'get_outputs'):
-                return 'detect'
 
-            outputs = self.model.get_outputs()
-            output_names = [output.name for output in outputs]
-            output_shapes = [output.shape for output in outputs]
-
-            print(f"ONNX输出节点: {output_names}")
-            print(f"ONNX输出形状: {output_shapes}")
-
-            # 根据输出节点数量和名称判断
-            if len(outputs) == 1:
-                # 单输出通常是分类
-                output_shape = output_shapes[0]
-                if len(output_shape) == 2:  # [batch, classes]
-                    return 'classify'
-                else:
-                    return 'detect'
-            elif len(outputs) >= 2:
-                # 多输出可能是分割、姿态估计或定向边框
-                for name in output_names:
-                    name_lower = name.lower()
-                    if 'mask' in name_lower or 'segment' in name_lower:
-                        return 'segment'
-                    elif 'keypoint' in name_lower or 'pose' in name_lower:
-                        return 'pose'
-                    elif 'obb' in name_lower or 'oriented' in name_lower:
-                        return 'obb'
-
-                return 'detect'
-
-            return 'detect'
-
-        except Exception as e:
-            print(f"ONNX输出分析失败: {e}")
-            return 'detect'
 
     def set_parameters(self, conf: float = None, iou: float = None,
                       max_det: int = None, classes: List[int] = None,
@@ -440,20 +395,16 @@ class YOLODetector:
             raise ValueError("模型未加载")
 
         try:
-            if self.model_type == 'pt':
-                # 使用ultralytics进行检测
-                results = self.model(
-                    image,
-                    conf=self.conf_threshold,
-                    iou=self.iou_threshold,
-                    max_det=self.max_det,
-                    classes=self.classes,
-                    device=self.device
-                )
-                return results
-            else:
-                # ONNX模型检测逻辑
-                return self._detect_with_onnx(image)
+            # 使用ultralytics进行检测
+            results = self.model(
+                image,
+                conf=self.conf_threshold,
+                iou=self.iou_threshold,
+                max_det=self.max_det,
+                classes=self.classes,
+                device=self.device
+            )
+            return results
 
         except Exception as e:
             print(f"检测失败: {str(e)}")
@@ -517,51 +468,11 @@ class YOLODetector:
             print(f"视频检测失败: {str(e)}")
             raise
 
-    def _detect_with_onnx(self, image: Union[str, np.ndarray]):
-        """
-        使用ONNX模型进行检测
 
-        Args:
-            image: 输入图片
 
-        Returns:
-            检测结果
-        """
-        # 这里需要实现ONNX模型的检测逻辑
-        # 由于ONNX模型的输入输出格式可能不同，这里提供基础框架
-        if isinstance(image, str):
-            image = cv2.imread(image)
 
-        # 预处理图片
-        input_tensor = self._preprocess_for_onnx(image)
 
-        # 运行推理
-        input_name = self.model.get_inputs()[0].name
-        outputs = self.model.run(None, {input_name: input_tensor})
 
-        # 后处理结果
-        results = self._postprocess_onnx_output(outputs, image.shape)
-
-        return results
-
-    def _preprocess_for_onnx(self, image: np.ndarray) -> np.ndarray:
-        """
-        ONNX模型预处理
-        """
-        # 基础预处理，具体实现需要根据模型要求调整
-        image = cv2.resize(image, (640, 640))
-        image = image.astype(np.float32) / 255.0
-        image = np.transpose(image, (2, 0, 1))
-        image = np.expand_dims(image, axis=0)
-        return image
-
-    def _postprocess_onnx_output(self, outputs, original_shape):
-        """
-        ONNX模型后处理
-        """
-        # 基础后处理框架，具体实现需要根据模型输出格式调整
-        # 这里返回一个简化的结果格式
-        return outputs
 
     def get_model_info(self) -> dict:
         """
@@ -583,7 +494,7 @@ class YOLODetector:
             'max_det': self.max_det
         }
 
-        if self.model_type == 'pt' and hasattr(self.model, 'names'):
+        if hasattr(self.model, 'names'):
             info['classes'] = self.model.names
 
         return info
@@ -596,6 +507,8 @@ class YOLODetector:
             bool: 是否已加载
         """
         return self.model is not None
+
+
 
     def plot_results(self, results, image: np.ndarray) -> np.ndarray:
         """
@@ -645,7 +558,9 @@ class YOLODetector:
         xyxy = boxes.xyxy.cpu().numpy()
         conf = boxes.conf.cpu().numpy() if hasattr(boxes, 'conf') else None
         cls = boxes.cls.cpu().numpy() if hasattr(boxes, 'cls') else None
-        names = getattr(self.model, 'names', {}) if self.model_type == 'pt' else {}
+
+        # 获取类别名称映射
+        names = getattr(self.model, 'names', {})
 
         for i in range(len(xyxy)):
             x1, y1, x2, y2 = xyxy[i].astype(int)
@@ -776,7 +691,9 @@ class YOLODetector:
         xyxyxyxy = obb.xyxyxyxy.cpu().numpy()
         conf = obb.conf.cpu().numpy() if hasattr(obb, 'conf') else None
         cls = obb.cls.cpu().numpy() if hasattr(obb, 'cls') else None
-        names = getattr(self.model, 'names', {}) if self.model_type == 'pt' else {}
+
+        # 获取类别名称映射
+        names = getattr(self.model, 'names', {})
 
         for i in range(len(xyxyxyxy)):
             # 获取四个顶点坐标
@@ -823,7 +740,14 @@ class YOLODetector:
         """绘制分类结果"""
         if hasattr(result, 'probs') and result.probs is not None:
             probs = result.probs.data.cpu().numpy()
-            names = getattr(self.model, 'names', {}) if self.model_type == 'pt' else {}
+
+            # 获取类别名称映射
+            if self.model_type == 'pt':
+                names = getattr(self.model, 'names', {})
+            else:
+                names = getattr(result, 'names', {})
+                if not names:
+                    names = {i: f'class_{i}' for i in range(len(probs))}
 
             # 获取top-5预测
             top5_indices = np.argsort(probs)[-5:][::-1]

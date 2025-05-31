@@ -34,6 +34,8 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
+
+
 from ui.main_window import MainWindow
 
 

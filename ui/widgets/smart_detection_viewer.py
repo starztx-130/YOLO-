@@ -30,6 +30,8 @@ class SmartDetectionViewer(QWidget):
         self.current_source = None
         self.source_type = None  # 'image', 'video', 'camera'
         self.video_thread = None
+        self.current_original_image = None  # 保存原始图像用于重新绘制
+        self.current_results = None  # 保存当前检测结果
 
         self.setup_ui()
         self.connect_signals()
@@ -302,8 +304,14 @@ class SmartDetectionViewer(QWidget):
                 self.detectionError.emit("无法读取图片文件")
                 return False
 
+            # 保存原始图像
+            self.current_original_image = image.copy()
+
             # 进行检测
             results = self.detector.detect_image(image)
+
+            # 保存检测结果
+            self.current_results = results
 
             # 使用自定义绘制方法根据显示选项绘制结果
             annotated_image = self.detector.plot_results(results, image)
@@ -348,6 +356,68 @@ class SmartDetectionViewer(QWidget):
         if self.source_type in ['video', 'camera']:
             self.stop_playback()
         # 图片检测无需停止操作
+
+    def refresh_display(self, update_table=True):
+        """刷新显示（当显示选项改变时重新绘制检测结果）
+
+        Args:
+            update_table: 是否更新数据表，默认True。当仅刷新显示选项时设为False
+        """
+        if self.source_type == 'image' and self.current_original_image is not None and self.current_results is not None:
+            try:
+                # 使用当前的显示选项重新绘制检测结果
+                annotated_image = self.detector.plot_results(self.current_results, self.current_original_image)
+                annotated_image = cv2.cvtColor(annotated_image, cv2.COLOR_BGR2RGB)
+
+                # 更新显示
+                self.image_viewer.set_image(annotated_image, is_rgb=True)
+
+                # 根据参数决定是否发送信号更新其他组件
+                if update_table:
+                    # 正常检测时，发送信号更新数据表等组件
+                    self.frameChanged.emit(self.current_results, annotated_image)
+                # 仅刷新显示选项时，不发送信号，避免重复添加数据表记录
+
+            except Exception as e:
+                print(f"刷新显示失败: {e}")
+        elif self.source_type == 'video' and hasattr(self, 'current_frame'):
+            # 对于视频，重新处理当前帧
+            try:
+                self._refresh_video_frame(update_table)
+            except Exception as e:
+                print(f"刷新视频帧失败: {e}")
+        # 对于摄像头，暂时不支持实时刷新（实时流无法重新处理）
+
+    def _refresh_video_frame(self, update_table=True):
+        """刷新视频当前帧
+
+        Args:
+            update_table: 是否更新数据表，默认True。当仅刷新显示选项时设为False
+        """
+        if self.source_type == 'video' and self.current_source:
+            cap = cv2.VideoCapture(self.current_source)
+            if cap.isOpened():
+                # 跳转到当前帧
+                cap.set(cv2.CAP_PROP_POS_FRAMES, self.current_frame)
+                ret, frame = cap.read()
+                if ret:
+                    # 进行检测
+                    results = self.detector.detect_image(frame)
+
+                    # 使用当前显示选项绘制结果
+                    annotated_frame = self.detector.plot_results(results, frame)
+                    annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
+
+                    # 更新显示
+                    self.image_viewer.set_image(annotated_frame, is_rgb=True)
+
+                    # 根据参数决定是否发送信号更新其他组件
+                    if update_table:
+                        # 正常检测时，发送信号更新数据表等组件
+                        self.frameChanged.emit(results, annotated_frame)
+                    # 仅刷新显示选项时，不发送信号，避免重复添加数据表记录
+
+                cap.release()
 
     # 图片控制方法
     def fit_to_window(self):

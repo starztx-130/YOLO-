@@ -36,6 +36,7 @@ from .widgets.parameter_panel import ParameterPanel
 from .widgets.detection_table import DetectionTable
 from .widgets.video_player import VideoPlayer
 from .widgets.smart_detection_viewer import SmartDetectionViewer
+from .widgets.converter_widget import ConverterWidget
 from core.detector import YOLODetector
 from core.utils import (check_cuda_availability, validate_model_file,
                        validate_media_file, is_image_file, is_video_file,
@@ -172,6 +173,7 @@ class MainWindow(QMainWindow):
         # 当前文件路径
         self.current_file = None
         self.current_results = None
+        self.current_original_image = None  # 保存原始图像用于重新绘制
 
         # 设置窗口
         self.setWindowTitle("YOLO目标检测系统 v2.0.0")
@@ -279,6 +281,10 @@ class MainWindow(QMainWindow):
         info_layout.addStretch()
         self.tab_widget.addTab(info_widget, "系统信息")
 
+        # 模型转换器标签页
+        self.converter_widget = ConverterWidget()
+        self.tab_widget.addTab(self.converter_widget, "模型转换")
+
         right_layout.addWidget(self.tab_widget)
         splitter.addWidget(right_panel)
 
@@ -321,6 +327,15 @@ class MainWindow(QMainWindow):
         load_model_action = QAction("加载模型", self)
         load_model_action.triggered.connect(self.load_model)
         model_menu.addAction(load_model_action)
+
+        model_menu.addSeparator()
+
+        convert_model_action = QAction("模型转换", self)
+        convert_model_action.setShortcut("Ctrl+M")
+        convert_model_action.triggered.connect(self.show_model_converter)
+        model_menu.addAction(convert_model_action)
+
+
 
         # 视图菜单
         view_menu = menubar.addMenu("视图")
@@ -431,6 +446,7 @@ class MainWindow(QMainWindow):
 
         # 参数面板信号
         self.parameter_panel.parametersChanged.connect(self.update_detector_parameters)
+        self.parameter_panel.parametersChanged.connect(self.refresh_detection_display)
 
         # 检测表格信号
         self.detection_table.detectionSelected.connect(self.on_detection_selected)
@@ -692,6 +708,7 @@ class MainWindow(QMainWindow):
     def on_detection_result(self, results, image):
         """处理检测结果"""
         self.current_results = results
+        # 注意：这里的image已经是处理后的RGB图像，我们需要从智能查看器获取原始图像
 
         # 更新检测信息
         info_text = format_detection_info(results)
@@ -706,6 +723,12 @@ class MainWindow(QMainWindow):
         self.detection_table.add_detections(results, current_time, task_type)
 
         # 不强制切换标签页，让用户自由查看任何标签页
+
+    def refresh_detection_display(self):
+        """刷新检测结果显示（当显示选项改变时）"""
+        # 只刷新显示效果，不更新数据表
+        if hasattr(self.smart_viewer, 'refresh_display'):
+            self.smart_viewer.refresh_display(update_table=False)
 
     def on_progress_update(self, progress):
         """更新进度"""
@@ -764,6 +787,12 @@ class MainWindow(QMainWindow):
             else:
                 QMessageBox.warning(self, "错误", "保存失败")
 
+    def show_model_converter(self):
+        """显示模型转换器"""
+        # 切换到模型转换标签页
+        self.tab_widget.setCurrentWidget(self.converter_widget)
+        self.status_label.setText("模型转换器已打开")
+
     def show_about(self):
         """显示关于对话框"""
         QMessageBox.about(
@@ -772,8 +801,9 @@ class MainWindow(QMainWindow):
             "YOLO目标检测系统\n\n"
             "基于PySide6和Ultralytics开发\n"
             "支持图片、视频和实时摄像头检测\n"
-            "支持PyTorch (.pt) 和 ONNX (.onnx) 模型\n\n"
-            "版本: 1.0.0"
+            "支持PyTorch (.pt) 和 ONNX (.onnx) 模型\n"
+            "支持模型格式转换功能\n\n"
+            "版本: 2.0.0"
         )
 
     def closeEvent(self, event):
@@ -794,3 +824,5 @@ class MainWindow(QMainWindow):
                 event.ignore()
         else:
             event.accept()
+
+
