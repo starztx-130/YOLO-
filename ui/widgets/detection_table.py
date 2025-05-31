@@ -20,10 +20,32 @@ class DetectionTable(QWidget):
         super().__init__(parent)
         self.detection_data = []
         self.detection_id_counter = 1
-        self.headers = [
-            "ID", "类别", "置信度", "X1", "Y1", "X2", "Y2",
-            "宽度", "高度", "面积", "中心X", "中心Y", "时间戳"
-        ]
+        self.current_task_type = 'detect'  # 当前任务类型
+
+        # 不同任务类型的表头定义
+        self.task_headers = {
+            'detect': [
+                "ID", "类别", "置信度", "X1", "Y1", "X2", "Y2",
+                "宽度", "高度", "面积", "中心X", "中心Y", "时间戳"
+            ],
+            'segment': [
+                "ID", "类别", "置信度", "X1", "Y1", "X2", "Y2",
+                "宽度", "高度", "面积", "掩码面积", "掩码像素", "时间戳"
+            ],
+            'pose': [
+                "ID", "人体ID", "关键点数", "可见点数", "姿态置信度",
+                "X1", "Y1", "X2", "Y2", "中心X", "中心Y", "时间戳"
+            ],
+            'classify': [
+                "ID", "预测类别", "置信度", "Top2", "Top3", "Top4", "Top5", "时间戳"
+            ],
+            'obb': [
+                "ID", "类别", "置信度", "P1_X", "P1_Y", "P2_X", "P2_Y",
+                "P3_X", "P3_Y", "P4_X", "P4_Y", "旋转角度", "面积", "时间戳"
+            ]
+        }
+
+        self.headers = self.task_headers[self.current_task_type]
         self.setup_ui()
         self.connect_signals()
 
@@ -98,10 +120,7 @@ class DetectionTable(QWidget):
         header.setSectionResizeMode(QHeaderView.Interactive)
 
         # 设置初始列宽
-        column_widths = [50, 80, 80, 60, 60, 60, 60, 60, 60, 80, 60, 60, 80]
-        for i, width in enumerate(column_widths):
-            if i < len(self.headers):
-                self.table.setColumnWidth(i, width)
+        self._setup_column_widths()
 
         layout.addWidget(self.table)
 
@@ -136,20 +155,93 @@ class DetectionTable(QWidget):
         self.table.customContextMenuRequested.connect(self.show_context_menu)
         self.table.cellClicked.connect(self.on_cell_clicked)
 
-    def add_detections(self, results, frame_time=None):
-        """添加检测结果"""
+    def set_task_type(self, task_type: str):
+        """设置任务类型并更新表格结构"""
+        if task_type not in self.task_headers:
+            task_type = 'detect'  # 默认为检测任务
+
+        if task_type != self.current_task_type:
+            self.current_task_type = task_type
+            self.headers = self.task_headers[task_type]
+
+            # 清空现有数据
+            self.clear_table()
+
+            # 更新表格结构
+            self.table.setColumnCount(len(self.headers))
+            self.table.setHorizontalHeaderLabels(self.headers)
+
+            # 重新设置列宽
+            self._setup_column_widths()
+
+    def _setup_column_widths(self):
+        """根据任务类型设置列宽"""
+        column_widths = {
+            'detect': [50, 80, 80, 60, 60, 60, 60, 60, 60, 80, 60, 60, 80],
+            'segment': [50, 80, 80, 60, 60, 60, 60, 60, 60, 80, 80, 80, 80],
+            'pose': [50, 60, 80, 80, 80, 60, 60, 60, 60, 60, 60, 80],
+            'classify': [50, 100, 80, 80, 80, 80, 80, 80],
+            'obb': [50, 80, 80, 60, 60, 60, 60, 60, 60, 60, 60, 80, 80, 80]
+        }
+
+        widths = column_widths.get(self.current_task_type, column_widths['detect'])
+        for i, width in enumerate(widths):
+            if i < len(self.headers):
+                self.table.setColumnWidth(i, width)
+
+    def add_detections(self, results, frame_time=None, task_type=None):
+        """添加检测结果，支持多任务类型"""
         if not results or len(results) == 0:
             return
 
         result = results[0]
-        if result.boxes is None or len(result.boxes) == 0:
-            return
+
+        # 自动检测任务类型
+        if task_type is None:
+            task_type = self._detect_task_type(result)
+
+        # 如果任务类型改变，更新表格结构
+        if task_type != self.current_task_type:
+            self.set_task_type(task_type)
 
         if frame_time is None:
             import datetime
             frame_time = datetime.datetime.now().strftime("%H:%M:%S")
 
         # 检查最大行数限制
+        self._check_max_rows()
+
+        # 根据任务类型添加数据
+        if task_type == 'detect':
+            self._add_detection_data(result, frame_time)
+        elif task_type == 'segment':
+            self._add_segmentation_data(result, frame_time)
+        elif task_type == 'pose':
+            self._add_pose_data(result, frame_time)
+        elif task_type == 'classify':
+            self._add_classification_data(result, frame_time)
+        elif task_type == 'obb':
+            self._add_obb_data(result, frame_time)
+
+        # 自动滚动到底部
+        if self.auto_scroll_cb.isChecked():
+            self.table.scrollToBottom()
+
+    def _detect_task_type(self, result):
+        """检测任务类型"""
+        if hasattr(result, 'masks') and result.masks is not None:
+            return 'segment'
+        elif hasattr(result, 'keypoints') and result.keypoints is not None:
+            return 'pose'
+        elif hasattr(result, 'probs') and result.probs is not None:
+            return 'classify'
+        elif hasattr(result, 'obb') and result.obb is not None:
+            return 'obb'
+        else:
+            return 'detect'
+
+    def _check_max_rows(self):
+        """检查最大行数限制"""
         max_rows_text = self.max_rows_combo.currentText()
         if max_rows_text != "无限制":
             max_rows = int(max_rows_text)
@@ -163,7 +255,18 @@ class DetectionTable(QWidget):
                     if self.detection_data:
                         self.detection_data.pop(0)
 
-        # 添加新检测结果
+    def clear_table(self):
+        """清空表格"""
+        self.table.setRowCount(0)
+        self.detection_data.clear()
+        self.detection_id_counter = 1
+        self.update_statistics()
+
+    def _add_detection_data(self, result, frame_time):
+        """添加目标检测数据"""
+        if not hasattr(result, 'boxes') or result.boxes is None:
+            return
+
         for box in result.boxes:
             # 获取边界框坐标
             x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
@@ -197,39 +300,260 @@ class DetectionTable(QWidget):
                 frame_time                 # 时间戳
             ]
 
-            # 添加到表格
-            row_position = self.table.rowCount()
-            self.table.insertRow(row_position)
+            self._add_row_to_table(row_data, confidence)
 
-            for col, value in enumerate(row_data):
-                item = QTableWidgetItem(str(value))
+    def _add_segmentation_data(self, result, frame_time):
+        """添加实例分割数据"""
+        import numpy as np
 
-                # 根据置信度设置背景色
-                if col == 2:  # 置信度列
-                    conf_val = float(value)
-                    if conf_val >= 0.8:
-                        item.setBackground(QColor(200, 255, 200))  # 高置信度 - 浅绿色
-                    elif conf_val >= 0.5:
-                        item.setBackground(QColor(255, 255, 200))  # 中等置信度 - 浅黄色
+        if not hasattr(result, 'boxes') or result.boxes is None:
+            return
+
+        masks = result.masks.data.cpu().numpy() if hasattr(result, 'masks') and result.masks is not None else None
+
+        for i, box in enumerate(result.boxes):
+            # 获取边界框坐标
+            x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+
+            # 计算基本参数
+            width = x2 - x1
+            height = y2 - y1
+            area = width * height
+
+            # 计算掩码参数
+            mask_area = 0
+            mask_pixels = 0
+            if masks is not None and i < len(masks):
+                try:
+                    mask = masks[i]
+                    mask_pixels = int(np.sum(mask > 0.5))
+                    mask_area = mask_pixels  # 像素面积
+                except Exception as e:
+                    print(f"计算掩码参数时出错: {e}")
+                    mask_area = 0
+                    mask_pixels = 0
+
+            # 获取类别和置信度
+            class_id = int(box.cls.item())
+            class_name = result.names[class_id]
+            confidence = float(box.conf.item())
+
+            # 创建行数据
+            row_data = [
+                self.detection_id_counter,  # ID
+                class_name,                 # 类别
+                f"{confidence:.3f}",        # 置信度
+                f"{x1:.1f}",               # X1
+                f"{y1:.1f}",               # Y1
+                f"{x2:.1f}",               # X2
+                f"{y2:.1f}",               # Y2
+                f"{width:.1f}",            # 宽度
+                f"{height:.1f}",           # 高度
+                f"{area:.0f}",             # 面积
+                f"{mask_area:.0f}",        # 掩码面积
+                f"{mask_pixels}",          # 掩码像素
+                frame_time                 # 时间戳
+            ]
+
+            self._add_row_to_table(row_data, confidence)
+
+    def _add_pose_data(self, result, frame_time):
+        """添加姿态估计数据"""
+        import numpy as np
+
+        if not hasattr(result, 'keypoints') or result.keypoints is None:
+            return
+
+        keypoints = result.keypoints.data.cpu().numpy()
+        boxes = result.boxes if hasattr(result, 'boxes') and result.boxes is not None else None
+
+        for i, person_kpts in enumerate(keypoints):
+            # 计算关键点统计
+            total_keypoints = len(person_kpts)
+            visible_keypoints = np.sum(person_kpts[:, 2] > 0.5)  # 置信度 > 0.5的关键点
+            pose_confidence = np.mean(person_kpts[:, 2])  # 平均关键点置信度
+
+            # 获取边界框（如果有的话）
+            if boxes is not None and hasattr(boxes, '__len__') and i < len(boxes):
+                try:
+                    if hasattr(boxes, 'xyxy'):
+                        # 标准的boxes对象
+                        box_data = boxes.xyxy[i] if hasattr(boxes.xyxy, '__getitem__') else boxes[i].xyxy[0]
+                        x1, y1, x2, y2 = box_data.cpu().numpy()
                     else:
-                        item.setBackground(QColor(255, 220, 220))  # 低置信度 - 浅红色
+                        # 列表形式的boxes
+                        x1, y1, x2, y2 = boxes[i].xyxy[0].cpu().numpy()
+                    center_x = (x1 + x2) / 2
+                    center_y = (y1 + y2) / 2
+                except:
+                    # 如果获取边界框失败，从关键点计算
+                    valid_kpts = person_kpts[person_kpts[:, 2] > 0.5]
+                    if len(valid_kpts) > 0:
+                        x1, y1 = np.min(valid_kpts[:, :2], axis=0)
+                        x2, y2 = np.max(valid_kpts[:, :2], axis=0)
+                        center_x = (x1 + x2) / 2
+                        center_y = (y1 + y2) / 2
+                    else:
+                        x1 = y1 = x2 = y2 = center_x = center_y = 0
+            else:
+                # 从关键点计算边界框
+                valid_kpts = person_kpts[person_kpts[:, 2] > 0.5]
+                if len(valid_kpts) > 0:
+                    x1, y1 = np.min(valid_kpts[:, :2], axis=0)
+                    x2, y2 = np.max(valid_kpts[:, :2], axis=0)
+                    center_x = (x1 + x2) / 2
+                    center_y = (y1 + y2) / 2
+                else:
+                    x1 = y1 = x2 = y2 = center_x = center_y = 0
 
-                self.table.setItem(row_position, col, item)
+            # 创建行数据
+            row_data = [
+                self.detection_id_counter,      # ID
+                f"人体{i+1}",                   # 人体ID
+                f"{total_keypoints}",           # 关键点数
+                f"{visible_keypoints}",         # 可见点数
+                f"{pose_confidence:.3f}",       # 姿态置信度
+                f"{x1:.1f}",                   # X1
+                f"{y1:.1f}",                   # Y1
+                f"{x2:.1f}",                   # X2
+                f"{y2:.1f}",                   # Y2
+                f"{center_x:.1f}",             # 中心X
+                f"{center_y:.1f}",             # 中心Y
+                frame_time                     # 时间戳
+            ]
 
-            # 保存到内部数据
-            self.detection_data.append(row_data)
-            self.detection_id_counter += 1
+            self._add_row_to_table(row_data, pose_confidence)
 
-        # 自动滚动到底部
-        if self.auto_scroll_cb.isChecked():
-            self.table.scrollToBottom()
+    def _add_classification_data(self, result, frame_time):
+        """添加分类数据"""
+        import numpy as np
 
-    def clear_table(self):
-        """清空表格"""
-        self.table.setRowCount(0)
-        self.detection_data.clear()
-        self.detection_id_counter = 1
-        self.update_statistics()
+        if not hasattr(result, 'probs') or result.probs is None:
+            return
+
+        probs = result.probs.data.cpu().numpy()
+        names = result.names if hasattr(result, 'names') else {}
+
+        # 获取top-5预测
+        top5_indices = np.argsort(probs)[-5:][::-1]
+
+        # 创建行数据
+        row_data = [self.detection_id_counter]  # ID
+
+        for i, idx in enumerate(top5_indices):
+            if i == 0:
+                # 第一个是预测类别
+                class_name = names.get(idx, f"类别{idx}")
+                confidence = probs[idx]
+                row_data.extend([class_name, f"{confidence:.3f}"])
+            else:
+                # 其他是top2-5
+                class_name = names.get(idx, f"类别{idx}")
+                confidence = probs[idx]
+                row_data.append(f"{class_name}({confidence:.3f})")
+
+        # 补齐到8列（如果top5不足）
+        while len(row_data) < 7:
+            row_data.append("-")
+
+        row_data.append(frame_time)  # 时间戳
+
+        self._add_row_to_table(row_data, probs[top5_indices[0]])
+
+    def _add_obb_data(self, result, frame_time):
+        """添加定向边界框数据"""
+        import numpy as np
+
+        if not hasattr(result, 'obb') or result.obb is None:
+            return
+
+        obb = result.obb
+        if not hasattr(obb, 'xyxyxyxy'):
+            return
+
+        xyxyxyxy = obb.xyxyxyxy.cpu().numpy()
+        conf = obb.conf.cpu().numpy() if hasattr(obb, 'conf') else None
+        cls = obb.cls.cpu().numpy() if hasattr(obb, 'cls') else None
+
+        for i in range(len(xyxyxyxy)):
+            # 获取四个顶点坐标
+            points = xyxyxyxy[i].reshape(4, 2)
+
+            # 计算旋转角度（基于第一条边的角度）
+            dx = points[1][0] - points[0][0]
+            dy = points[1][1] - points[0][1]
+            angle = np.degrees(np.arctan2(dy, dx))
+
+            # 计算面积（使用叉积公式）
+            def polygon_area(vertices):
+                n = len(vertices)
+                area = 0.0
+                for i in range(n):
+                    j = (i + 1) % n
+                    area += vertices[i][0] * vertices[j][1]
+                    area -= vertices[j][0] * vertices[i][1]
+                return abs(area) / 2.0
+
+            area = polygon_area(points)
+
+            # 获取类别和置信度
+            if cls is not None and conf is not None:
+                class_id = int(cls[i])
+                class_name = result.names[class_id] if hasattr(result, 'names') else f'class_{class_id}'
+                confidence = float(conf[i])
+            else:
+                class_name = 'unknown'
+                confidence = 0.0
+
+            # 创建行数据
+            row_data = [
+                self.detection_id_counter,  # ID
+                class_name,                 # 类别
+                f"{confidence:.3f}",        # 置信度
+                f"{points[0][0]:.1f}",     # P1_X
+                f"{points[0][1]:.1f}",     # P1_Y
+                f"{points[1][0]:.1f}",     # P2_X
+                f"{points[1][1]:.1f}",     # P2_Y
+                f"{points[2][0]:.1f}",     # P3_X
+                f"{points[2][1]:.1f}",     # P3_Y
+                f"{points[3][0]:.1f}",     # P4_X
+                f"{points[3][1]:.1f}",     # P4_Y
+                f"{angle:.1f}°",           # 旋转角度
+                f"{area:.0f}",             # 面积
+                frame_time                 # 时间戳
+            ]
+
+            self._add_row_to_table(row_data, confidence)
+
+    def _add_row_to_table(self, row_data, confidence_value):
+        """添加行到表格"""
+        from PySide6.QtWidgets import QTableWidgetItem
+        from PySide6.QtGui import QColor
+
+        # 添加到表格
+        row_position = self.table.rowCount()
+        self.table.insertRow(row_position)
+
+        for col, value in enumerate(row_data):
+            item = QTableWidgetItem(str(value))
+
+            # 根据置信度设置背景色（第2列或第4列可能是置信度）
+            if (self.current_task_type in ['detect', 'segment', 'obb'] and col == 2) or \
+               (self.current_task_type == 'pose' and col == 4) or \
+               (self.current_task_type == 'classify' and col == 2):
+                conf_val = confidence_value
+                if conf_val >= 0.8:
+                    item.setBackground(QColor(200, 255, 200))  # 高置信度 - 浅绿色
+                elif conf_val >= 0.5:
+                    item.setBackground(QColor(255, 255, 200))  # 中等置信度 - 浅黄色
+                else:
+                    item.setBackground(QColor(255, 220, 220))  # 低置信度 - 浅红色
+
+            self.table.setItem(row_position, col, item)
+
+        # 保存到内部数据
+        self.detection_data.append(row_data)
+        self.detection_id_counter += 1
 
     def update_statistics(self):
         """更新统计信息"""

@@ -19,7 +19,9 @@ DEFAULT_DETECTION_PARAMS = {
     'device': 'auto',
     'show_labels': True,
     'show_conf': True,
-    'show_boxes': True
+    'show_boxes': True,
+    'show_masks': True,
+    'show_keypoints': True
 }
 
 # 支持的文件格式

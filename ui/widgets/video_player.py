@@ -63,11 +63,9 @@ class VideoDetectionThread(QThread):
                     # 检测当前帧
                     results = self.detector.detect_image(frame)
 
-                    if results and len(results) > 0:
-                        annotated_frame = results[0].plot()
-                        annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
-                    else:
-                        annotated_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    # 使用自定义绘制方法根据显示选项绘制结果
+                    annotated_frame = self.detector.plot_results(results, frame)
+                    annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
 
                     # 发送帧数据（摄像头模式current_frame保持为0）
                     self.frameReady.emit(results, annotated_frame, 0, 0, fps)
@@ -109,11 +107,9 @@ class VideoDetectionThread(QThread):
                     # 检测当前帧
                     results = self.detector.detect_image(frame)
 
-                    if results and len(results) > 0:
-                        annotated_frame = results[0].plot()
-                        annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
-                    else:
-                        annotated_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    # 使用自定义绘制方法根据显示选项绘制结果
+                    annotated_frame = self.detector.plot_results(results, frame)
+                    annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
 
                     # 发送帧数据
                     self.frameReady.emit(results, annotated_frame, self.current_frame, self.total_frames, fps)

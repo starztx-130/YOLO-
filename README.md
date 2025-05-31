@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-# YOLO-
-基于pyside6的yolo可视化检测界面
-=======
 # YOLO目标检测系统
 
 基于YOLOv8的目标检测系统，支持图片、视频和摄像头检测。
@@ -117,4 +113,3 @@ A: 使用较小的模型（如yolov8n.pt），启用GPU加速
 ## 许可证
 
 MIT License
->>>>>>> e337e3d (Initial commit)

@@ -479,6 +479,7 @@ class MainWindow(QMainWindow):
                 model_info = self.detector.get_model_info()
                 info_text = f"模型: {Path(file_path).name}\n"
                 info_text += f"类型: {model_info.get('model_type', 'unknown').upper()}\n"
+                info_text += f"任务: {model_info.get('task_type', 'unknown').upper()}\n"
                 info_text += f"设备: {model_info.get('device', 'unknown').upper()}"
 
                 self.model_info_label.setText(info_text)
@@ -680,7 +681,12 @@ class MainWindow(QMainWindow):
             conf=params['conf_threshold'],
             iou=params['iou_threshold'],
             max_det=params['max_det'],
-            classes=params['classes']
+            classes=params['classes'],
+            show_labels=params['show_labels'],
+            show_conf=params['show_conf'],
+            show_boxes=params['show_boxes'],
+            show_masks=params['show_masks'],
+            show_keypoints=params['show_keypoints']
         )
 
     def on_detection_result(self, results, image):
@@ -694,7 +700,10 @@ class MainWindow(QMainWindow):
         # 添加检测结果到表格
         import datetime
         current_time = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]  # 精确到毫秒
-        self.detection_table.add_detections(results, current_time)
+
+        # 获取当前任务类型
+        task_type = getattr(self.detector, 'task_type', 'detect')
+        self.detection_table.add_detections(results, current_time, task_type)
 
         # 不强制切换标签页，让用户自由查看任何标签页
 

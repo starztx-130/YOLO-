@@ -305,17 +305,14 @@ class SmartDetectionViewer(QWidget):
             # 进行检测
             results = self.detector.detect_image(image)
 
-            if results and len(results) > 0:
-                # 绘制检测结果
-                annotated_image = results[0].plot()
-                annotated_image = cv2.cvtColor(annotated_image, cv2.COLOR_BGR2RGB)
-            else:
-                annotated_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            # 使用自定义绘制方法根据显示选项绘制结果
+            annotated_image = self.detector.plot_results(results, image)
+            annotated_image = cv2.cvtColor(annotated_image, cv2.COLOR_BGR2RGB)
 
             # 显示结果（指明图像已经是RGB格式）
             self.image_viewer.set_image(annotated_image, is_rgb=True)
 
-            # 发送信号
+            # 发送信号，包含任务类型
             self.frameChanged.emit(results, annotated_image)
             self.progressChanged.emit(100)
             self.detectionFinished.emit()
