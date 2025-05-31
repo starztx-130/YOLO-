@@ -1,20 +1,4 @@
-"""
-YOLO检测器核心模块
-
-提供基于YOLOv8的目标检测功能，支持图片和视频检测。
-
-主要功能：
-- 模型加载：支持PyTorch (.pt) 格式
-- 参数配置：置信度、IoU阈值等参数设置
-- 图片检测：单张图片的目标检测
-- 视频检测：视频文件的逐帧检测
-- 设备支持：自动检测并支持CPU/GPU加速
-
-使用示例：
-    detector = YOLODetector()
-    detector.load_model('yolov8n.pt')
-    results = detector.detect_image('image.jpg')
-"""
+# YOLO检测器核心模块
 import cv2
 import numpy as np
 from pathlib import Path
@@ -25,7 +9,7 @@ from .utils import get_device, validate_model_file
 
 
 class YOLODetector:
-    """YOLO检测器类"""
+    # YOLO检测器类
 
     def __init__(self):
         self.model = None
@@ -53,7 +37,7 @@ class YOLODetector:
 
 
     def _init_class_colors(self):
-        """初始化类别颜色"""
+        # 初始化类别颜色
         # 预定义一些美观的颜色（BGR格式）
         self.predefined_colors = [
             (255, 0, 0),     # 红色
@@ -79,7 +63,7 @@ class YOLODetector:
         ]
 
     def _get_class_color(self, class_id: int) -> tuple:
-        """获取类别对应的固定颜色"""
+        # 获取类别对应的固定颜色
         if class_id not in self.class_colors:
             # 如果类别ID在预定义颜色范围内，使用预定义颜色
             if class_id < len(self.predefined_colors):
@@ -99,16 +83,7 @@ class YOLODetector:
         return self.class_colors[class_id]
 
     def load_model(self, model_path: str, device: str = None) -> bool:
-        """
-        加载YOLO模型
-
-        Args:
-            model_path: 模型文件路径
-            device: 设备类型 ('cpu' 或 'cuda')
-
-        Returns:
-            bool: 是否加载成功
-        """
+        # 加载YOLO模型
         try:
             if not validate_model_file(model_path):
                 raise ValueError(f"无效的模型文件: {model_path}")
@@ -143,7 +118,7 @@ class YOLODetector:
             return False
 
     def _detect_task_type(self):
-        """通过模型结构检测任务类型"""
+        # 通过模型结构检测任务类型
         try:
             if self.model_type == 'pt' and hasattr(self.model, 'model'):
                 # 方法1：通过模型结构分析检测头类型
@@ -179,7 +154,7 @@ class YOLODetector:
             self.task_type = 'detect'
 
     def _analyze_model_structure(self):
-        """分析PyTorch模型结构确定任务类型"""
+        # 分析PyTorch模型结构确定任务类型
         try:
             model = self.model.model
 
@@ -263,7 +238,7 @@ class YOLODetector:
             return None
 
     def _check_model_task_attribute(self):
-        """检查模型的任务属性"""
+        # 检查模型的任务属性
         try:
             # 检查ultralytics模型的task属性
             if hasattr(self.model, 'task'):
@@ -300,7 +275,7 @@ class YOLODetector:
             return None
 
     def _detect_by_inference(self):
-        """通过测试推理检测任务类型"""
+        # 通过测试推理检测任务类型
         try:
             # 创建小尺寸测试图像以加快推理速度
             test_image = np.zeros((320, 320, 3), dtype=np.uint8)
@@ -345,21 +320,7 @@ class YOLODetector:
                       show_labels: bool = None, show_conf: bool = None,
                       show_boxes: bool = None, show_masks: bool = None,
                       show_keypoints: bool = None, show_obb: bool = None):
-        """
-        设置检测参数
-
-        Args:
-            conf: 置信度阈值
-            iou: IoU阈值
-            max_det: 最大检测数量
-            classes: 指定检测的类别ID列表
-            show_labels: 是否显示标签
-            show_conf: 是否显示置信度
-            show_boxes: 是否显示边界框
-            show_masks: 是否显示分割掩码
-            show_keypoints: 是否显示关键点
-            show_obb: 是否显示定向边界框
-        """
+        # 设置检测参数
         if conf is not None:
             self.conf_threshold = conf
         if iou is not None:
@@ -382,15 +343,7 @@ class YOLODetector:
             self.show_obb = show_obb
 
     def detect_image(self, image: Union[str, np.ndarray]) -> Optional[object]:
-        """
-        检测图片
-
-        Args:
-            image: 图片路径或numpy数组
-
-        Returns:
-            检测结果
-        """
+        # 检测图片
         if self.model is None:
             raise ValueError("模型未加载")
 
@@ -411,16 +364,7 @@ class YOLODetector:
             return None
 
     def detect_video(self, video_path: str, output_path: str = None) -> Generator[Tuple[np.ndarray, int], None, None]:
-        """
-        检测视频
-
-        Args:
-            video_path: 视频文件路径
-            output_path: 输出视频路径
-
-        Yields:
-            Tuple[np.ndarray, int]: (检测后的帧, 帧数)
-        """
+        # 检测视频
         if self.model is None:
             raise ValueError("模型未加载")
 
@@ -475,12 +419,7 @@ class YOLODetector:
 
 
     def get_model_info(self) -> dict:
-        """
-        获取模型信息
-
-        Returns:
-            dict: 模型信息
-        """
+        # 获取模型信息
         if self.model is None:
             return {}
 
@@ -500,27 +439,13 @@ class YOLODetector:
         return info
 
     def is_loaded(self) -> bool:
-        """
-        检查模型是否已加载
-
-        Returns:
-            bool: 是否已加载
-        """
+        # 检查模型是否已加载
         return self.model is not None
 
 
 
     def plot_results(self, results, image: np.ndarray) -> np.ndarray:
-        """
-        根据显示选项和任务类型绘制检测结果
-
-        Args:
-            results: 检测结果
-            image: 原始图像
-
-        Returns:
-            np.ndarray: 绘制后的图像
-        """
+        # 根据显示选项和任务类型绘制检测结果
         if not results or len(results) == 0:
             return image
 
@@ -547,7 +472,7 @@ class YOLODetector:
             return self._plot_detection_results(result, annotated_image)
 
     def _plot_detection_results(self, result, image: np.ndarray) -> np.ndarray:
-        """绘制目标检测结果"""
+        # 绘制目标检测结果
         if not hasattr(result, 'boxes') or result.boxes is None:
             return image
 
@@ -592,7 +517,7 @@ class YOLODetector:
         return image
 
     def _plot_segmentation_results(self, result, image: np.ndarray) -> np.ndarray:
-        """绘制实例分割结果"""
+        # 绘制实例分割结果
         # 先绘制分割掩码
         if self.show_masks and hasattr(result, 'masks') and result.masks is not None:
             try:
@@ -644,7 +569,7 @@ class YOLODetector:
         return image
 
     def _plot_pose_results(self, result, image: np.ndarray) -> np.ndarray:
-        """绘制姿态估计结果"""
+        # 绘制姿态估计结果
         # 先绘制边界框和标签
         if hasattr(result, 'boxes') and result.boxes is not None:
             image = self._plot_detection_results(result, image)
@@ -679,7 +604,7 @@ class YOLODetector:
         return image
 
     def _plot_obb_results(self, result, image: np.ndarray) -> np.ndarray:
-        """绘制定向边界框检测结果"""
+        # 绘制定向边界框检测结果
         if not hasattr(result, 'obb') or result.obb is None:
             return image
 
@@ -737,7 +662,7 @@ class YOLODetector:
         return image
 
     def _plot_classification_results(self, result, image: np.ndarray) -> np.ndarray:
-        """绘制分类结果"""
+        # 绘制分类结果
         if hasattr(result, 'probs') and result.probs is not None:
             probs = result.probs.data.cpu().numpy()
 
@@ -765,7 +690,7 @@ class YOLODetector:
         return image
 
     def _draw_label(self, image: np.ndarray, label: str, position: tuple, color: tuple = (0, 255, 0)):
-        """绘制标签"""
+        # 绘制标签
         x, y = position
         font = cv2.FONT_HERSHEY_SIMPLEX
         font_scale = 0.6
@@ -787,7 +712,7 @@ class YOLODetector:
                    font, font_scale, text_color, thickness)
 
     def _get_text_color(self, bg_color: tuple) -> tuple:
-        """根据背景颜色选择合适的文本颜色"""
+        # 根据背景颜色选择合适的文本颜色
         # 计算背景颜色的亮度
         brightness = (bg_color[0] * 0.299 + bg_color[1] * 0.587 + bg_color[2] * 0.114)
         # 如果背景较暗，使用白色文本；如果背景较亮，使用黑色文本

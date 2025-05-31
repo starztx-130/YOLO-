@@ -1,25 +1,4 @@
-"""
-YOLO目标检测系统主程序
-
-基于YOLOv8的目标检测系统，支持图片、视频和摄像头检测。
-提供图形界面和完整的检测功能。
-
-主要功能：
-- 图片检测：支持常见图片格式
-- 视频检测：支持视频文件播放和检测
-- 摄像头检测：实时摄像头检测
-- 结果可视化：检测框、标签、置信度显示
-- 数据导出：检测结果导出为CSV
-
-技术栈：
-- YOLOv8: 目标检测模型
-- PySide6: GUI框架
-- OpenCV: 图像处理
-- NumPy: 数值计算
-
-版本: 2.0.0
-许可: MIT License
-"""
+# YOLO目标检测系统主程序
 import sys
 import os
 from pathlib import Path
@@ -40,7 +19,7 @@ from ui.main_window import MainWindow
 
 
 def check_dependencies():
-    """检查依赖包是否安装"""
+    # 检查依赖包是否安装
     missing_packages = []
 
     try:
@@ -86,7 +65,7 @@ def check_dependencies():
 
 
 def setup_application():
-    """设置应用程序"""
+    # 设置应用程序
     app = QApplication(sys.argv)
 
     # 设置应用程序信息
@@ -105,7 +84,7 @@ def setup_application():
 
 
 def main():
-    """主函数"""
+    # 主函数
     # 检查依赖
     if not check_dependencies():
         input("按回车键退出...")

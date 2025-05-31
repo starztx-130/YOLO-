@@ -85,22 +85,20 @@ yolo-detection-system/
 ├── requirements.txt           # 依赖包列表
 ├── install_converter_deps.py  # 模型转换依赖安装脚本
 ├── README.md                  # 项目文档
-├── run.bat                    # Windows启动脚本
-├── run.sh                     # Linux/macOS启动脚本
 ├── core/                      # 核心模块
 │   ├── detector.py            # YOLO检测器
 │   ├── model_converter.py     # 模型转换器
 │   └── utils.py               # 工具函数
 ├── ui/                        # 用户界面
-│   ├── main_window.py         # 主窗口
-│   └── widgets/               # 界面组件
-│       ├── image_viewer.py    # 图片查看器
-│       ├── video_player.py    # 视频播放器
-│       ├── detection_table.py # 检测数据表
-│       ├── parameter_panel.py # 参数面板
-│       ├── converter_widget.py    # 模型转换器界面
-│       └── smart_detection_viewer.py # 智能检测查看器
-└── examples/                  # 示例代码
+    ├── main_window.py         # 主窗口
+    └── widgets/               # 界面组件
+        ├── image_viewer.py    # 图片查看器
+        ├── video_player.py    # 视频播放器
+        ├── detection_table.py # 检测数据表
+        ├── parameter_panel.py # 参数面板
+        ├── converter_widget.py    # 模型转换器界面
+        └── smart_detection_viewer.py # 智能检测查看器
+
 ```
 
 ## 支持格式

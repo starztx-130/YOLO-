@@ -1,23 +1,4 @@
-"""
-YOLO模型转换器
-
-基于ultralytics的export功能，提供YOLO模型格式转换功能。
-支持将PyTorch模型转换为多种部署格式。
-
-主要功能：
-- 多格式支持：ONNX, TensorRT, CoreML, TensorFlow等
-- 参数配置：图像尺寸、量化、优化等选项
-- 转换验证：转换后模型的基本验证
-- 进度跟踪：转换过程的实时进度反馈
-
-支持的转换格式：
-- ONNX: 跨平台推理
-- TensorRT: NVIDIA GPU优化
-- CoreML: Apple设备部署
-- TensorFlow: TF生态系统
-- OpenVINO: Intel硬件优化
-- TensorFlow Lite: 移动端部署
-"""
+# YOLO模型转换器
 import os
 import time
 from pathlib import Path
@@ -28,7 +9,7 @@ from .utils import validate_model_file, get_device
 
 
 class ModelConverter:
-    """YOLO模型转换器类"""
+    # YOLO模型转换器类
     
     # 支持的导出格式配置
     EXPORT_FORMATS = {
@@ -74,15 +55,7 @@ class ModelConverter:
         }
         
     def load_model(self, model_path: str) -> bool:
-        """
-        加载要转换的模型
-        
-        Args:
-            model_path: 模型文件路径
-            
-        Returns:
-            bool: 是否加载成功
-        """
+        # 加载要转换的模型
         try:
             if not validate_model_file(model_path):
                 raise ValueError(f"无效的模型文件: {model_path}")
@@ -102,44 +75,21 @@ class ModelConverter:
             return False
             
     def get_supported_formats(self) -> Dict[str, Dict]:
-        """
-        获取支持的导出格式
-        
-        Returns:
-            Dict: 支持的格式信息
-        """
+        # 获取支持的导出格式
         return self.EXPORT_FORMATS.copy()
         
     def set_export_params(self, **kwargs) -> None:
-        """
-        设置导出参数
-        
-        Args:
-            **kwargs: 导出参数
-        """
+        # 设置导出参数
         for key, value in kwargs.items():
             if key in self.export_params:
                 self.export_params[key] = value
                 
     def get_export_params(self) -> Dict:
-        """
-        获取当前导出参数
-        
-        Returns:
-            Dict: 导出参数
-        """
+        # 获取当前导出参数
         return self.export_params.copy()
         
     def validate_export_params(self, format_key: str) -> Tuple[bool, str]:
-        """
-        验证导出参数是否适用于指定格式
-        
-        Args:
-            format_key: 导出格式键
-            
-        Returns:
-            Tuple[bool, str]: (是否有效, 错误信息)
-        """
+        # 验证导出参数是否适用于指定格式
         if format_key not in self.EXPORT_FORMATS:
             return False, f"不支持的导出格式: {format_key}"
             
@@ -164,16 +114,7 @@ class ModelConverter:
         return True, ""
         
     def get_output_path(self, format_key: str, output_dir: str = None) -> str:
-        """
-        生成输出文件路径
-        
-        Args:
-            format_key: 导出格式键
-            output_dir: 输出目录
-            
-        Returns:
-            str: 输出文件路径
-        """
+        # 生成输出文件路径
         if not self.model_path:
             raise ValueError("未加载模型")
             
@@ -192,17 +133,7 @@ class ModelConverter:
 
     def convert_model(self, format_key: str, output_path: str = None,
                      progress_callback=None) -> Tuple[bool, str, str]:
-        """
-        转换模型到指定格式
-
-        Args:
-            format_key: 导出格式键
-            output_path: 输出路径（可选）
-            progress_callback: 进度回调函数
-
-        Returns:
-            Tuple[bool, str, str]: (是否成功, 输出路径, 错误信息)
-        """
+        # 转换模型到指定格式
         if self.model is None:
             return False, "", "未加载模型"
 
@@ -258,15 +189,7 @@ class ModelConverter:
             return False, "", error_msg
 
     def _prepare_export_kwargs(self, format_key: str) -> Dict[str, Any]:
-        """
-        准备导出参数
-
-        Args:
-            format_key: 导出格式键
-
-        Returns:
-            Dict: 导出参数
-        """
+        # 准备导出参数
         format_info = self.EXPORT_FORMATS[format_key]
         supported_args = format_info.get('supported_args', [])
 
@@ -289,12 +212,7 @@ class ModelConverter:
         return export_kwargs
 
     def get_model_info(self) -> Dict[str, Any]:
-        """
-        获取当前模型信息
-
-        Returns:
-            Dict: 模型信息
-        """
+        # 获取当前模型信息
         if self.model is None:
             return {}
 
@@ -326,30 +244,14 @@ class ModelConverter:
             return {}
 
     def _get_file_size(self, file_path: str) -> int:
-        """
-        获取文件大小（字节）
-
-        Args:
-            file_path: 文件路径
-
-        Returns:
-            int: 文件大小
-        """
+        # 获取文件大小（字节）
         try:
             return os.path.getsize(file_path)
         except:
             return 0
 
     def estimate_conversion_time(self, format_key: str) -> str:
-        """
-        估算转换时间
-
-        Args:
-            format_key: 导出格式键
-
-        Returns:
-            str: 时间估算描述
-        """
+        # 估算转换时间
         if format_key == 'onnx':
             return "约 30秒 - 2分钟"
         elif format_key == 'openvino':
@@ -360,12 +262,7 @@ class ModelConverter:
             return "约 1-5分钟"
 
     def get_format_recommendations(self) -> Dict[str, List[str]]:
-        """
-        获取格式推荐
-
-        Returns:
-            Dict: 使用场景推荐
-        """
+        # 获取格式推荐
         return {
             '跨平台部署': ['onnx'],
             'Intel硬件优化': ['openvino'],

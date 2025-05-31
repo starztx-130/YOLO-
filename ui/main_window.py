@@ -1,22 +1,4 @@
-"""
-YOLO检测系统主窗口
-
-主界面模块，提供完整的用户交互界面。
-
-主要功能：
-- 模型管理：加载、配置YOLO模型
-- 文件操作：打开图片、视频文件
-- 检测控制：图片、视频、摄像头检测
-- 结果展示：检测查看器、数据表、系统信息
-- 参数调节：置信度、IoU阈值等参数设置
-- 数据导出：检测结果保存和导出
-
-界面特性：
-- 分栏布局设计
-- 多标签页结果展示
-- 实时检测进度显示
-- 完整的菜单和工具栏
-"""
+# YOLO检测系统主窗口
 import os
 import sys
 import cv2
@@ -78,7 +60,7 @@ class DetectionThread(QThread):
         self.is_running = False
 
     def _detect_image(self):
-        """检测图片"""
+        # 检测图片
         image = cv2.imread(self.source)
         if image is None:
             self.error.emit("无法读取图片文件")
@@ -98,7 +80,7 @@ class DetectionThread(QThread):
         self.progressUpdate.emit(100)
 
     def _detect_video(self):
-        """检测视频"""
+        # 检测视频
         cap = cv2.VideoCapture(self.source)
         if not cap.isOpened():
             self.error.emit("无法打开视频文件")
@@ -130,7 +112,7 @@ class DetectionThread(QThread):
         cap.release()
 
     def _detect_camera(self):
-        """检测摄像头"""
+        # 检测摄像头
         cap = cv2.VideoCapture(0)  # 默认摄像头
         if not cap.isOpened():
             self.error.emit("无法打开摄像头")
@@ -161,7 +143,7 @@ class DetectionThread(QThread):
 
 
 class MainWindow(QMainWindow):
-    """主窗口类"""
+    # 主窗口类
 
     def __init__(self):
         super().__init__()
@@ -190,7 +172,7 @@ class MainWindow(QMainWindow):
         self.check_system_info()
 
     def setup_ui(self):
-        """设置UI界面"""
+        # 设置UI界面
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
@@ -293,7 +275,7 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(splitter)
 
     def setup_menu(self):
-        """设置菜单栏"""
+        # 设置菜单栏
         menubar = self.menuBar()
 
         # 文件菜单
@@ -389,7 +371,7 @@ class MainWindow(QMainWindow):
         help_menu.addAction(about_action)
 
     def setup_toolbar(self):
-        """设置工具栏"""
+        # 设置工具栏
         toolbar = self.addToolBar("主工具栏")
 
         # 打开文件
@@ -419,7 +401,7 @@ class MainWindow(QMainWindow):
         toolbar.addAction(stop_action)
 
     def setup_statusbar(self):
-        """设置状态栏"""
+        # 设置状态栏
         self.status_bar = self.statusBar()
 
         # 状态标签
@@ -436,7 +418,7 @@ class MainWindow(QMainWindow):
         self.status_bar.addPermanentWidget(self.device_label)
 
     def connect_signals(self):
-        """连接信号"""
+        # 连接信号
         # 按钮信号
         self.load_model_btn.clicked.connect(self.load_model)
         self.detect_image_btn.clicked.connect(lambda: self.detect_file('image'))
@@ -458,7 +440,7 @@ class MainWindow(QMainWindow):
         self.smart_viewer.detectionError.connect(self.on_detection_error)
 
     def check_system_info(self):
-        """检查系统信息"""
+        # 检查系统信息
         cuda_available, cuda_info = check_cuda_availability()
 
         system_info = f"系统信息:\n"

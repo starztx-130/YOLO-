@@ -1,6 +1,4 @@
-"""
-工具函数模块
-"""
+# 工具函数模块
 import os
 import sys
 import torch
@@ -11,12 +9,7 @@ from typing import Optional, Tuple, List
 
 
 def check_cuda_availability() -> Tuple[bool, str]:
-    """
-    检查CUDA是否可用
-
-    Returns:
-        Tuple[bool, str]: (是否可用, 设备信息)
-    """
+    # 检查CUDA是否可用
     if torch.cuda.is_available():
         device_count = torch.cuda.device_count()
         device_name = torch.cuda.get_device_name(0)
@@ -26,25 +19,12 @@ def check_cuda_availability() -> Tuple[bool, str]:
 
 
 def get_device() -> str:
-    """
-    获取推荐的设备
-
-    Returns:
-        str: 设备名称 ('cuda' 或 'cpu')
-    """
+    # 获取推荐的设备
     return 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 def validate_model_file(file_path: str) -> bool:
-    """
-    验证模型文件是否有效
-
-    Args:
-        file_path: 模型文件路径
-
-    Returns:
-        bool: 是否有效
-    """
+    # 验证模型文件是否有效
     if not os.path.exists(file_path):
         return False
 
@@ -53,15 +33,7 @@ def validate_model_file(file_path: str) -> bool:
 
 
 def validate_media_file(file_path: str) -> bool:
-    """
-    验证媒体文件是否有效
-
-    Args:
-        file_path: 媒体文件路径
-
-    Returns:
-        bool: 是否有效
-    """
+    # 验证媒体文件是否有效
     if not os.path.exists(file_path):
         return False
 
@@ -73,46 +45,21 @@ def validate_media_file(file_path: str) -> bool:
 
 
 def is_image_file(file_path: str) -> bool:
-    """
-    判断是否为图片文件
-
-    Args:
-        file_path: 文件路径
-
-    Returns:
-        bool: 是否为图片
-    """
+    # 判断是否为图片文件
     file_ext = Path(file_path).suffix.lower()
     image_exts = ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp']
     return file_ext in image_exts
 
 
 def is_video_file(file_path: str) -> bool:
-    """
-    判断是否为视频文件
-
-    Args:
-        file_path: 文件路径
-
-    Returns:
-        bool: 是否为视频
-    """
+    # 判断是否为视频文件
     file_ext = Path(file_path).suffix.lower()
     video_exts = ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv']
     return file_ext in video_exts
 
 
 def resize_image_keep_ratio(image: np.ndarray, target_size: Tuple[int, int]) -> np.ndarray:
-    """
-    保持宽高比缩放图片
-
-    Args:
-        image: 输入图片
-        target_size: 目标尺寸 (width, height)
-
-    Returns:
-        np.ndarray: 缩放后的图片
-    """
+    # 保持宽高比缩放图片
     h, w = image.shape[:2]
     target_w, target_h = target_size
 
@@ -140,15 +87,7 @@ def resize_image_keep_ratio(image: np.ndarray, target_size: Tuple[int, int]) -> 
 
 
 def format_detection_info(results) -> str:
-    """
-    格式化检测结果信息，支持多任务类型
-
-    Args:
-        results: YOLO检测结果
-
-    Returns:
-        str: 格式化的信息
-    """
+    # 格式化检测结果信息，支持多任务类型
     if not results or len(results) == 0:
         return "未检测到目标"
 
@@ -190,15 +129,7 @@ def format_detection_info(results) -> str:
 
 
 def create_output_dir(base_dir: str = "output") -> str:
-    """
-    创建输出目录
-
-    Args:
-        base_dir: 基础目录名
-
-    Returns:
-        str: 创建的目录路径
-    """
+    # 创建输出目录
     output_dir = Path(base_dir)
     output_dir.mkdir(exist_ok=True)
     return str(output_dir)
